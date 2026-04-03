@@ -13,38 +13,45 @@ body {
 
 h1 {
   margin-top: 20px;
-  font-size: 28px;
+  font-size: 32px;
 }
 
+/* 初期ボタン */
 .select-btn {
-  width: 300px;
-  height: 100px;
-  font-size: 24px;
+  width: 320px;
+  height: 110px;
+  font-size: 26px;
   margin: 20px;
   border-radius: 20px;
 }
 
+/* タイマー配置 */
 .timer-container {
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 60vh;
+  height: 70vh;
 }
 
+/* 円めちゃデカ */
 .timer {
   position: relative;
-  width: 300px;
-  height: 300px;
+  width: 45vw;
+  max-width: 600px;
+  height: 45vw;
+  max-height: 600px;
   margin: 20px;
 }
 
 svg {
+  width: 100%;
+  height: 100%;
   transform: rotate(-90deg);
 }
 
 circle {
   fill: none;
-  stroke-width: 20;
+  stroke-width: 25; /* 太くした */
 }
 
 .bg {
@@ -53,35 +60,38 @@ circle {
 
 .progress {
   stroke-linecap: round;
-  transition: stroke 0.3s;
 }
 
+/* 数字 */
 .time-text {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  font-size: 48px;
+  font-size: 6vw;
+  max-font-size: 90px;
   font-weight: bold;
 }
 
+/* 通知 */
 .notice {
-  font-size: 32px;
+  font-size: 2.5vw;
   margin-top: 10px;
-  height: 40px;
+  height: 50px;
 }
 
+/* ボタン */
 .controls button {
-  width: 150px;
-  height: 60px;
-  font-size: 20px;
+  width: 180px;
+  height: 70px;
+  font-size: 22px;
   margin: 10px;
   border-radius: 15px;
 }
 
 .sub-controls button {
-  width: 120px;
-  height: 50px;
+  width: 140px;
+  height: 55px;
   margin: 5px;
 }
 
@@ -101,6 +111,7 @@ circle {
 </div>
 
 <div id="game" class="hidden">
+
   <div class="timer-container" id="timers"></div>
 
   <div class="controls">
@@ -112,6 +123,7 @@ circle {
     <button onclick="reset()">リセット</button>
     <button onclick="back()">戻る</button>
   </div>
+
 </div>
 
 <script>
@@ -138,7 +150,7 @@ function startGame(sec) {
 function createTimer(id) {
   return `
   <div class="timer">
-    <svg width="300" height="300">
+    <svg viewBox="0 0 300 300">
       <circle class="bg" cx="150" cy="150" r="120"></circle>
       <circle id="prog${id}" class="progress" cx="150" cy="150" r="120"
         stroke-dasharray="754" stroke-dashoffset="754"></circle>
@@ -182,8 +194,6 @@ function extend() {
 
   extended = true;
   extTime = time + 60;
-
-  // 男子は9分、女子は6分30秒を最大値
   extTotal = (total === 480) ? 540 : 390;
 
   document.getElementById("extendBtn").style.background = "#ccc";
