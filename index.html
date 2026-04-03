@@ -3,24 +3,28 @@
 <head>
 <meta charset="UTF-8">
 <title>弓道団体戦専用タイマー</title>
+
 <style>
 body {
   margin: 0;
+  height: 100vh;
+  overflow: hidden;
   font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
   background: #ffffff;
   text-align: center;
 }
 
+/* タイトル */
 h1 {
-  margin-top: 20px;
-  font-size: 32px;
+  margin-top: 10px;
+  font-size: 26px;
 }
 
 /* 初期ボタン */
 .select-btn {
-  width: 320px;
-  height: 110px;
-  font-size: 26px;
+  width: 300px;
+  height: 100px;
+  font-size: 24px;
   margin: 20px;
   border-radius: 20px;
 }
@@ -30,28 +34,28 @@ h1 {
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 70vh;
+  height: 55vh;
 }
 
-/* 円めちゃデカ */
+/* タイマー本体（レスポンシブ） */
 .timer {
   position: relative;
-  width: 45vw;
-  max-width: 600px;
-  height: 45vw;
-  max-height: 600px;
-  margin: 20px;
+  width: 35vw;
+  height: 35vw;
+  max-width: 420px;
+  max-height: 420px;
+  margin: 30px;
 }
 
 svg {
+  transform: rotate(-90deg);
   width: 100%;
   height: 100%;
-  transform: rotate(-90deg);
 }
 
 circle {
   fill: none;
-  stroke-width: 25; /* 太くした */
+  stroke-width: 20;
 }
 
 .bg {
@@ -68,33 +72,39 @@ circle {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  font-size: 6vw;
-  max-font-size: 90px;
+  font-size: 5vw;
   font-weight: bold;
 }
 
-/* 通知 */
+/* 通知（被らないように改善） */
 .notice {
   font-size: 2.5vw;
-  margin-top: 10px;
-  height: 50px;
+  font-weight: bold;
+  margin-top: 20px;
+  height: 70px;
 }
 
 /* ボタン */
+.controls {
+  margin-top: 10px;
+}
+
 .controls button {
-  width: 180px;
-  height: 70px;
-  font-size: 22px;
+  width: 140px;
+  height: 60px;
+  font-size: 18px;
   margin: 10px;
   border-radius: 15px;
 }
 
+/* 下ボタン */
 .sub-controls button {
-  width: 140px;
-  height: 55px;
+  width: 120px;
+  height: 50px;
   margin: 5px;
 }
 
+/* 非表示 */
 .hidden {
   display: none;
 }
@@ -131,13 +141,11 @@ let total, time, extTime;
 let running = false;
 let interval;
 let extended = false;
-let extTotal;
 
 function startGame(sec) {
   total = sec;
   time = sec;
   extTime = null;
-  extTotal = null;
   running = false;
   extended = false;
 
@@ -161,8 +169,11 @@ function createTimer(id) {
 }
 
 function drawTimers() {
-  let html = createTimer("Main");
+  let html = "";
+  html += createTimer("Main");
+
   if (extended) html += createTimer("Ext");
+
   document.getElementById("timers").innerHTML = html;
   update();
 }
@@ -194,9 +205,9 @@ function extend() {
 
   extended = true;
   extTime = time + 60;
-  extTotal = (total === 480) ? 540 : 390;
 
   document.getElementById("extendBtn").style.background = "#ccc";
+  document.getElementById("extendBtn").innerText = "延長済み";
 
   drawTimers();
 }
@@ -240,17 +251,23 @@ function updateCircle(id, t, totalT) {
 
 function update() {
   updateCircle("Main", time, total);
-  if (extended) updateCircle("Ext", extTime, extTotal);
+
+  if (extended) {
+    let extTotal = (total === 480) ? 540 : 390;
+    updateCircle("Ext", extTime, extTotal);
+  }
 }
 
 function reset() {
   time = total;
   extTime = null;
-  extTotal = null;
   extended = false;
   running = false;
   clearInterval(interval);
+
   document.getElementById("extendBtn").style.background = "";
+  document.getElementById("extendBtn").innerText = "+1分";
+
   drawTimers();
 }
 
