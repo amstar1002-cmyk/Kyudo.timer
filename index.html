@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <title>弓道団体戦専用タイマー</title>
-
 <style>
 body {
   margin: 0;
   font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
+  background: #ffffff;
   text-align: center;
 }
 
@@ -16,7 +16,6 @@ h1 {
   font-size: 32px;
 }
 
-/* ボタン */
 .select-btn {
   width: 320px;
   height: 110px;
@@ -26,15 +25,6 @@ h1 {
   touch-action: manipulation;
 }
 
-button {
-  touch-action: manipulation;
-  margin: 10px;
-  padding: 15px;
-  font-size: 20px;
-  border-radius: 12px;
-}
-
-/* タイマー */
 .timer-container {
   display: flex;
   justify-content: center;
@@ -48,6 +38,7 @@ button {
   max-width: 600px;
   height: 45vw;
   max-height: 600px;
+  margin: 20px;
 }
 
 svg {
@@ -62,10 +53,14 @@ circle {
   stroke-width: 25;
 }
 
-.bg { stroke: #eee; }
-.progress { stroke-linecap: round; }
+.bg {
+  stroke: #eee;
+}
 
-/* 文字 */
+.progress {
+  stroke-linecap: round;
+}
+
 .time-text {
   position: absolute;
   top: 50%;
@@ -77,11 +72,29 @@ circle {
 
 .notice {
   font-size: 2.5vw;
+  margin-top: 10px;
   height: 50px;
 }
 
-/* UI */
-.hidden { display: none; }
+.controls button {
+  width: 180px;
+  height: 70px;
+  font-size: 22px;
+  margin: 10px;
+  border-radius: 15px;
+  touch-action: manipulation;
+}
+
+.sub-controls button {
+  width: 140px;
+  height: 55px;
+  margin: 5px;
+  touch-action: manipulation;
+}
+
+.hidden {
+  display: none;
+}
 </style>
 </head>
 
@@ -91,53 +104,64 @@ circle {
 
 <div id="menu">
   <button class="select-btn" onclick="startGame(480)">男子団体（8分）</button>
-  <button class="select-btn" onclick="startGame(330)">女子団体（5分30秒）</button>
+  <button class="select-btn" onclick="startGame(330)">女子・コメディカル（5分30秒）</button>
 </div>
 
 <div id="game" class="hidden">
+  <div class="timer-container" id="timers"></div>
 
-  <div class="timer-container">
-    <div class="timer">
-      <svg viewBox="0 0 300 300">
-        <circle class="bg" cx="150" cy="150" r="120"></circle>
-        <circle id="circle" class="progress" cx="150" cy="150" r="120"
-          stroke-dasharray="754" stroke-dashoffset="754"></circle>
-      </svg>
-
-      <div id="time" class="time-text"></div>
-      <div id="note" class="notice"></div>
-    </div>
+  <div class="controls">
+    <button onclick="toggle()">スタート / ストップ</button>
+    <button id="extendBtn" onclick="extend()">+1分</button>
   </div>
 
-  <button onclick="toggle()">スタート / ストップ</button>
-  <button onclick="extend()" id="extendBtn">延長 +1分</button>
-  <button onclick="reset()">リセット</button>
-  <button onclick="back()">戻る</button>
-
+  <div class="sub-controls">
+    <button onclick="reset()">リセット</button>
+    <button onclick="back()">戻る</button>
+  </div>
 </div>
 
 <script>
-let total = 0;
-let time = 0;
-
+let total, time, extTime;
 let running = false;
-let interval = null;
-
-let endTime = 0;
+let interval;
 let extended = false;
+let extTotal;
+
+let endTime;
+let extEndTime;
 
 function startGame(sec) {
   total = sec;
   time = sec;
+  extTime = null;
+  extTotal = null;
+  running = false;
   extended = false;
 
   document.getElementById("menu").classList.add("hidden");
   document.getElementById("game").classList.remove("hidden");
 
-  draw();
+  drawTimers();
 }
 
-function draw() {
+function createTimer(id) {
+  return `
+  <div class="timer">
+    <svg viewBox="0 0 300 300">
+      <circle class="bg" cx="150" cy="150" r="120"></circle>
+      <circle id="prog${id}" class="progress" cx="150" cy="150" r="120"
+        stroke-dasharray="754" stroke-dashoffset="754"></circle>
+    </svg>
+    <div id="time${id}" class="time-text"></div>
+    <div id="note${id}" class="notice"></div>
+  </div>`;
+}
+
+function drawTimers() {
+  let html = createTimer("Main");
+  if (extended) html += createTimer("Ext");
+  document.getElementById("timers").innerHTML = html;
   update();
 }
 
@@ -145,7 +169,12 @@ function toggle() {
   if (!running) {
     running = true;
     endTime = Date.now() + time * 1000;
-    interval = setInterval(tick, 50);
+
+    if (extended && extTime !== null) {
+      extEndTime = Date.now() + extTime * 1000;
+    }
+
+    interval = setInterval(tick, 200);
   } else {
     running = false;
     clearInterval(interval);
@@ -154,32 +183,38 @@ function toggle() {
 
 function tick() {
   const now = Date.now();
-  const remain = endTime - now;
 
-  time = Math.max(0, Math.floor(remain / 1000));
+  time = Math.max(0, Math.floor((endTime - now) / 1000));
+
+  if (extended && extEndTime) {
+    extTime = Math.max(0, Math.floor((extEndTime - now) / 1000));
+  }
 
   update();
 
-  if (remain <= 0) {
+  if (time === 0 && (!extended || extTime === 0)) {
     clearInterval(interval);
     running = false;
   }
 }
 
-/* 延長：＋60秒（男子・女子共通） */
 function extend() {
   if (!running || extended) return;
 
   extended = true;
-  endTime += 60000;
-  total += 60;
+  extTotal = (total === 480) ? 540 : 390;
+  extTime = 60;
+
+  extEndTime = Date.now() + 60000;
 
   document.getElementById("extendBtn").style.background = "#ccc";
+
+  drawTimers();
 }
 
 function format(t) {
-  const m = Math.floor(t / 60);
-  const s = t % 60;
+  let m = Math.floor(t / 60);
+  let s = t % 60;
   return `${m}:${s.toString().padStart(2,"0")}`;
 }
 
@@ -187,7 +222,7 @@ function getColor(t) {
   if (t === 0) return "#8B0000";
   if (t <= 30) return "#d97706";
   if (t <= 60) return "#1e3a8a";
-  return "#333";
+  return "#555";
 }
 
 function getNotice(t) {
@@ -197,30 +232,37 @@ function getNotice(t) {
   return "";
 }
 
-function update() {
-  const circle = document.getElementById("circle");
-
-  const percent = time / total;
+function updateCircle(id, t, totalT) {
+  const circle = document.getElementById("prog"+id);
+  const percent = 1 - (t / totalT);
   const offset = 754 * (1 - percent);
-
   circle.style.strokeDashoffset = offset;
-  circle.style.stroke = getColor(time);
 
-  document.getElementById("time").innerText = format(time);
-  document.getElementById("time").style.color = getColor(time);
+  const color = getColor(t);
+  circle.style.stroke = color;
 
-  document.getElementById("note").innerText = getNotice(time);
-  document.getElementById("note").style.color = getColor(time);
+  document.getElementById("time"+id).innerText = format(t);
+  document.getElementById("time"+id).style.color = color;
+
+  const note = getNotice(t);
+  document.getElementById("note"+id).innerText = note;
+  document.getElementById("note"+id).style.color = color;
+}
+
+function update() {
+  updateCircle("Main", time, total);
+  if (extended) updateCircle("Ext", extTime, extTotal);
 }
 
 function reset() {
   time = total;
-  running = false;
+  extTime = null;
+  extTotal = null;
   extended = false;
+  running = false;
   clearInterval(interval);
-
   document.getElementById("extendBtn").style.background = "";
-  draw();
+  drawTimers();
 }
 
 function back() {
