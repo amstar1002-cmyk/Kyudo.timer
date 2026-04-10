@@ -16,16 +16,15 @@ h1 {
   font-size: 32px;
 }
 
-/* 初期ボタン */
 .select-btn {
   width: 320px;
   height: 110px;
   font-size: 26px;
   margin: 20px;
   border-radius: 20px;
+  touch-action: manipulation;
 }
 
-/* タイマー配置 */
 .timer-container {
   display: flex;
   justify-content: center;
@@ -33,7 +32,6 @@ h1 {
   height: 70vh;
 }
 
-/* 円めちゃデカ */
 .timer {
   position: relative;
   width: 45vw;
@@ -47,7 +45,7 @@ svg {
   width: 100%;
   height: 100%;
   transform: rotate(-90deg);
-  pointer-events: none; /* ← 追加（クリック邪魔しない） */
+  pointer-events: none;
 }
 
 circle {
@@ -63,43 +61,35 @@ circle {
   stroke-linecap: round;
 }
 
-/* 数字 */
 .time-text {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
   font-size: 6vw;
-  max-font-size: 90px;
   font-weight: bold;
 }
 
-/* 通知 */
 .notice {
   font-size: 2.5vw;
   margin-top: 10px;
   height: 50px;
 }
 
-/* ボタン */
 .controls button {
   width: 180px;
   height: 70px;
   font-size: 22px;
   margin: 10px;
   border-radius: 15px;
-  touch-action: manipulation; /* ← 追加（タッチ改善） */
+  touch-action: manipulation;
 }
 
 .sub-controls button {
   width: 140px;
   height: 55px;
   margin: 5px;
-  touch-action: manipulation; /* ← 追加 */
-}
-
-.select-btn {
-  touch-action: manipulation; /* ← 追加 */
+  touch-action: manipulation;
 }
 
 .hidden {
@@ -118,7 +108,6 @@ circle {
 </div>
 
 <div id="game" class="hidden">
-
   <div class="timer-container" id="timers"></div>
 
   <div class="controls">
@@ -130,7 +119,6 @@ circle {
     <button onclick="reset()">リセット</button>
     <button onclick="back()">戻る</button>
   </div>
-
 </div>
 
 <script>
@@ -139,6 +127,9 @@ let running = false;
 let interval;
 let extended = false;
 let extTotal;
+
+let endTime;
+let extEndTime;
 
 function startGame(sec) {
   total = sec;
@@ -177,7 +168,13 @@ function drawTimers() {
 function toggle() {
   if (!running) {
     running = true;
-    interval = setInterval(tick, 1000);
+    endTime = Date.now() + time * 1000;
+
+    if (extended && extTime !== null) {
+      extEndTime = Date.now() + extTime * 1000;
+    }
+
+    interval = setInterval(tick, 200);
   } else {
     running = false;
     clearInterval(interval);
@@ -185,8 +182,13 @@ function toggle() {
 }
 
 function tick() {
-  if (time > 0) time--;
-  if (extended && extTime > 0) extTime--;
+  const now = Date.now();
+
+  time = Math.max(0, Math.floor((endTime - now) / 1000));
+
+  if (extended && extEndTime) {
+    extTime = Math.max(0, Math.floor((extEndTime - now) / 1000));
+  }
 
   update();
 
@@ -200,8 +202,10 @@ function extend() {
   if (!running || extended) return;
 
   extended = true;
-  extTime = time + 60;
   extTotal = (total === 480) ? 540 : 390;
+  extTime = 60;
+
+  extEndTime = Date.now() + 60000;
 
   document.getElementById("extendBtn").style.background = "#ccc";
 
