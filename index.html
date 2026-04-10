@@ -3,11 +3,28 @@
 <head>
 <meta charset="UTF-8">
 <title>弓道団体戦専用タイマー</title>
+
 <style>
 body {
   margin: 0;
-  font-family: serif;
+  font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
+  background: #ffffff;
   text-align: center;
+}
+
+h1 {
+  margin-top: 20px;
+  font-size: 32px;
+}
+
+/* ボタン */
+.select-btn {
+  width: 320px;
+  height: 110px;
+  font-size: 26px;
+  margin: 20px;
+  border-radius: 20px;
+  touch-action: manipulation;
 }
 
 .timer-container {
@@ -17,11 +34,14 @@ body {
   height: 70vh;
 }
 
+/* 円 */
 .timer {
   position: relative;
-  width: 40vw;
-  height: 40vw;
-  margin: 10px;
+  width: 45vw;
+  max-width: 600px;
+  height: 45vw;
+  max-height: 600px;
+  margin: 20px;
 }
 
 svg {
@@ -33,76 +53,98 @@ svg {
 
 circle {
   fill: none;
-  stroke-width: 20;
+  stroke-width: 25;
 }
 
 .bg { stroke: #eee; }
 .progress { stroke-linecap: round; }
 
+/* 文字 */
 .time-text {
   position: absolute;
-  top: 50%; left: 50%;
+  top: 50%;
+  left: 50%;
   transform: translate(-50%, -50%);
-  font-size: 5vw;
+  font-size: 6vw;
   font-weight: bold;
 }
 
+.notice {
+  font-size: 2.5vw;
+  margin-top: 10px;
+  height: 50px;
+}
+
+/* 操作ボタン */
 button {
   margin: 10px;
   padding: 15px;
   font-size: 20px;
+  border-radius: 12px;
   touch-action: manipulation;
 }
+
+.hidden { display: none; }
 </style>
 </head>
 
 <body>
 
-<h1>男子団体戦タイマー</h1>
+<h1>弓道団体戦専用タイマー</h1>
 
-<div class="timer-container" id="timers"></div>
+<div id="menu">
+  <button class="select-btn" onclick="startGame(480)">男子団体（8分）</button>
+  <button class="select-btn" onclick="startGame(330)">女子団体（5分30秒）</button>
+</div>
 
-<button onclick="toggle()">スタート / ストップ</button>
-<button onclick="extend()">延長 +1分</button>
+<div id="game" class="hidden">
+  <div class="timer-container" id="timers"></div>
+
+  <button onclick="toggle()">スタート / ストップ</button>
+  <button id="extendBtn" onclick="extend()">延長 +1分</button>
+  <button onclick="reset()">リセット</button>
+  <button onclick="back()">戻る</button>
+</div>
 
 <script>
-let total = 480;
-let time = 480;
-let extTime = null;
-
+let total, time;
 let running = false;
 let interval;
 
 let endTime;
-let extEndTime;
+let extended = false;
 
-function draw() {
-  let html = createTimer("Main");
-  if (extTime !== null) html += createTimer("Ext");
-  document.getElementById("timers").innerHTML = html;
+function startGame(sec) {
+  total = sec;
+  time = sec;
+  running = false;
+  extended = false;
+
+  document.getElementById("menu").classList.add("hidden");
+  document.getElementById("game").classList.remove("hidden");
+
+  draw();
 }
 
-function createTimer(id) {
-  return `
-  <div class="timer">
-    <svg viewBox="0 0 300 300">
-      <circle class="bg" cx="150" cy="150" r="120"></circle>
-      <circle id="prog${id}" class="progress" cx="150" cy="150" r="120"
-        stroke-dasharray="754" stroke-dashoffset="754"></circle>
-    </svg>
-    <div id="time${id}" class="time-text"></div>
-  </div>`;
+function draw() {
+  document.getElementById("timers").innerHTML = `
+    <div class="timer">
+      <svg viewBox="0 0 300 300">
+        <circle class="bg" cx="150" cy="150" r="120"></circle>
+        <circle id="prog" class="progress" cx="150" cy="150" r="120"
+          stroke-dasharray="754" stroke-dashoffset="754"></circle>
+      </svg>
+      <div id="time" class="time-text"></div>
+      <div id="note" class="notice"></div>
+    </div>
+  `;
+  update();
 }
 
 function toggle() {
   if (!running) {
     running = true;
     endTime = Date.now() + time * 1000;
-
-    if (extTime !== null) {
-      extEndTime = Date.now() + extTime * 1000;
-    }
-
     interval = setInterval(tick, 50);
   } else {
     running = false;
@@ -112,54 +154,79 @@ function toggle() {
 
 function tick() {
   const now = Date.now();
+  const remain = endTime - now;
 
-  const remainMain = endTime - now;
-  time = Math.max(0, Math.floor(remainMain / 1000));
-
-  if (extTime !== null) {
-    const remainExt = extEndTime - now;
-    extTime = Math.max(0, Math.floor(remainExt / 1000));
-  }
+  time = Math.max(0, Math.floor(remain / 1000));
 
   update();
 
-  if (remainMain <= 0 && (!extTime || extTime === 0)) {
+  if (remain <= 0) {
     clearInterval(interval);
     running = false;
   }
 }
 
+/* 🔥延長（男子・女子共通：＋1分加算） */
 function extend() {
-  if (!running || extTime !== null) return;
+  if (!running || extended) return;
 
-  // 残りに＋60秒
+  extended = true;
+
   endTime += 60000;
+  total += 60;
 
-  // 表示用に延長タイマー作る
-  extTime = 60;
-  extEndTime = Date.now() + 60000;
+  document.getElementById("extendBtn").style.background = "#ccc";
+}
 
-  draw();
+function format(t) {
+  let m = Math.floor(t / 60);
+  let s = t % 60;
+  return `${m}:${s.toString().padStart(2,"0")}`;
+}
+
+function getColor(t) {
+  if (t === 0) return "#8B0000";
+  if (t <= 30) return "#d97706";
+  if (t <= 60) return "#1e3a8a";
+  return "#555";
+}
+
+function getNotice(t) {
+  if (t <= 60 && t > 30) return "残り1分";
+  if (t <= 30 && t > 0) return "残り30秒　同時打ち起こし開始";
+  if (t === 0) return "終了";
+  return "";
 }
 
 function update() {
-  updateCircle("Main", time, total);
+  const circle = document.getElementById("prog");
+  const percent = 1 - (t / total);
+  const offset = 754 * (1 - (time / total));
 
-  if (extTime !== null) {
-    updateCircle("Ext", extTime, 60);
-  }
-}
-
-function updateCircle(id, t, totalT) {
-  const circle = document.getElementById("prog"+id);
-  const offset = 754 * (t / totalT);
   circle.style.strokeDashoffset = offset;
+  circle.style.stroke = getColor(time);
 
-  document.getElementById("time"+id).innerText =
-    Math.floor(t/60)+":"+String(t%60).padStart(2,"0");
+  document.getElementById("time").innerText = format(time);
+  document.getElementById("time").style.color = getColor(time);
+
+  document.getElementById("note").innerText = getNotice(time);
+  document.getElementById("note").style.color = getColor(time);
 }
 
-draw();
+function reset() {
+  time = total;
+  running = false;
+  extended = false;
+  clearInterval(interval);
+  document.getElementById("extendBtn").style.background = "";
+  draw();
+}
+
+function back() {
+  reset();
+  document.getElementById("game").classList.add("hidden");
+  document.getElementById("menu").classList.remove("hidden");
+}
 </script>
 
 </body>
