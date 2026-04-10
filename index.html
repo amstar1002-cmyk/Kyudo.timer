@@ -108,6 +108,7 @@ circle {
 </div>
 
 <div id="game" class="hidden">
+
   <div class="timer-container" id="timers"></div>
 
   <div class="controls">
@@ -119,23 +120,20 @@ circle {
     <button onclick="reset()">リセット</button>
     <button onclick="back()">戻る</button>
   </div>
+
 </div>
 
 <script>
-let total, time, extTime;
+let total, time;
 let running = false;
 let interval;
 let extended = false;
-let extTotal;
 
 let endTime;
-let extEndTime;
 
 function startGame(sec) {
   total = sec;
   time = sec;
-  extTime = null;
-  extTotal = null;
   running = false;
   extended = false;
 
@@ -145,23 +143,21 @@ function startGame(sec) {
   drawTimers();
 }
 
-function createTimer(id) {
+function createTimer() {
   return `
   <div class="timer">
     <svg viewBox="0 0 300 300">
       <circle class="bg" cx="150" cy="150" r="120"></circle>
-      <circle id="prog${id}" class="progress" cx="150" cy="150" r="120"
+      <circle id="prog" class="progress" cx="150" cy="150" r="120"
         stroke-dasharray="754" stroke-dashoffset="754"></circle>
     </svg>
-    <div id="time${id}" class="time-text"></div>
-    <div id="note${id}" class="notice"></div>
+    <div id="time" class="time-text"></div>
+    <div id="note" class="notice"></div>
   </div>`;
 }
 
 function drawTimers() {
-  let html = createTimer("Main");
-  if (extended) html += createTimer("Ext");
-  document.getElementById("timers").innerHTML = html;
+  document.getElementById("timers").innerHTML = createTimer();
   update();
 }
 
@@ -169,12 +165,7 @@ function toggle() {
   if (!running) {
     running = true;
     endTime = Date.now() + time * 1000;
-
-    if (extended && extTime !== null) {
-      extEndTime = Date.now() + extTime * 1000;
-    }
-
-    interval = setInterval(tick, 200);
+    interval = setInterval(tick, 50);
   } else {
     running = false;
     clearInterval(interval);
@@ -183,16 +174,13 @@ function toggle() {
 
 function tick() {
   const now = Date.now();
+  const remain = endTime - now;
 
-  time = Math.max(0, Math.floor((endTime - now) / 1000));
-
-  if (extended && extEndTime) {
-    extTime = Math.max(0, Math.floor((extEndTime - now) / 1000));
-  }
+  time = Math.max(0, Math.floor(remain / 1000));
 
   update();
 
-  if (time === 0 && (!extended || extTime === 0)) {
+  if (remain <= 0) {
     clearInterval(interval);
     running = false;
   }
@@ -202,14 +190,12 @@ function extend() {
   if (!running || extended) return;
 
   extended = true;
-  extTotal = (total === 480) ? 540 : 390;
-  extTime = 60;
 
-  extEndTime = Date.now() + 60000;
+  // 残り時間に＋60秒（←ここが重要）
+  endTime += 60000;
+  total += 60;
 
   document.getElementById("extendBtn").style.background = "#ccc";
-
-  drawTimers();
 }
 
 function format(t) {
@@ -232,8 +218,8 @@ function getNotice(t) {
   return "";
 }
 
-function updateCircle(id, t, totalT) {
-  const circle = document.getElementById("prog"+id);
+function updateCircle(t, totalT) {
+  const circle = document.getElementById("prog");
   const percent = 1 - (t / totalT);
   const offset = 754 * (1 - percent);
   circle.style.strokeDashoffset = offset;
@@ -241,25 +227,22 @@ function updateCircle(id, t, totalT) {
   const color = getColor(t);
   circle.style.stroke = color;
 
-  document.getElementById("time"+id).innerText = format(t);
-  document.getElementById("time"+id).style.color = color;
+  document.getElementById("time").innerText = format(t);
+  document.getElementById("time").style.color = color;
 
   const note = getNotice(t);
-  document.getElementById("note"+id).innerText = note;
-  document.getElementById("note"+id).style.color = color;
+  document.getElementById("note").innerText = note;
+  document.getElementById("note").style.color = color;
 }
 
 function update() {
-  updateCircle("Main", time, total);
-  if (extended) updateCircle("Ext", extTime, extTotal);
+  updateCircle(time, total);
 }
 
 function reset() {
   time = total;
-  extTime = null;
-  extTotal = null;
-  extended = false;
   running = false;
+  extended = false;
   clearInterval(interval);
   document.getElementById("extendBtn").style.background = "";
   drawTimers();
