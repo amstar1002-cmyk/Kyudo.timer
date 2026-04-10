@@ -8,7 +8,6 @@
 body {
   margin: 0;
   font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
-  background: #ffffff;
   text-align: center;
 }
 
@@ -27,6 +26,15 @@ h1 {
   touch-action: manipulation;
 }
 
+button {
+  touch-action: manipulation;
+  margin: 10px;
+  padding: 15px;
+  font-size: 20px;
+  border-radius: 12px;
+}
+
+/* タイマー */
 .timer-container {
   display: flex;
   justify-content: center;
@@ -34,14 +42,12 @@ h1 {
   height: 70vh;
 }
 
-/* 円 */
 .timer {
   position: relative;
   width: 45vw;
   max-width: 600px;
   height: 45vw;
   max-height: 600px;
-  margin: 20px;
 }
 
 svg {
@@ -71,19 +77,10 @@ circle {
 
 .notice {
   font-size: 2.5vw;
-  margin-top: 10px;
   height: 50px;
 }
 
-/* 操作ボタン */
-button {
-  margin: 10px;
-  padding: 15px;
-  font-size: 20px;
-  border-radius: 12px;
-  touch-action: manipulation;
-}
-
+/* UI */
 .hidden { display: none; }
 </style>
 </head>
@@ -98,26 +95,40 @@ button {
 </div>
 
 <div id="game" class="hidden">
-  <div class="timer-container" id="timers"></div>
+
+  <div class="timer-container">
+    <div class="timer">
+      <svg viewBox="0 0 300 300">
+        <circle class="bg" cx="150" cy="150" r="120"></circle>
+        <circle id="circle" class="progress" cx="150" cy="150" r="120"
+          stroke-dasharray="754" stroke-dashoffset="754"></circle>
+      </svg>
+
+      <div id="time" class="time-text"></div>
+      <div id="note" class="notice"></div>
+    </div>
+  </div>
 
   <button onclick="toggle()">スタート / ストップ</button>
-  <button id="extendBtn" onclick="extend()">延長 +1分</button>
+  <button onclick="extend()" id="extendBtn">延長 +1分</button>
   <button onclick="reset()">リセット</button>
   <button onclick="back()">戻る</button>
+
 </div>
 
 <script>
-let total, time;
-let running = false;
-let interval;
+let total = 0;
+let time = 0;
 
-let endTime;
+let running = false;
+let interval = null;
+
+let endTime = 0;
 let extended = false;
 
 function startGame(sec) {
   total = sec;
   time = sec;
-  running = false;
   extended = false;
 
   document.getElementById("menu").classList.add("hidden");
@@ -127,17 +138,6 @@ function startGame(sec) {
 }
 
 function draw() {
-  document.getElementById("timers").innerHTML = `
-    <div class="timer">
-      <svg viewBox="0 0 300 300">
-        <circle class="bg" cx="150" cy="150" r="120"></circle>
-        <circle id="prog" class="progress" cx="150" cy="150" r="120"
-          stroke-dasharray="754" stroke-dashoffset="754"></circle>
-      </svg>
-      <div id="time" class="time-text"></div>
-      <div id="note" class="notice"></div>
-    </div>
-  `;
   update();
 }
 
@@ -166,12 +166,11 @@ function tick() {
   }
 }
 
-/* 🔥延長（男子・女子共通：＋1分加算） */
+/* 延長：＋60秒（男子・女子共通） */
 function extend() {
   if (!running || extended) return;
 
   extended = true;
-
   endTime += 60000;
   total += 60;
 
@@ -179,8 +178,8 @@ function extend() {
 }
 
 function format(t) {
-  let m = Math.floor(t / 60);
-  let s = t % 60;
+  const m = Math.floor(t / 60);
+  const s = t % 60;
   return `${m}:${s.toString().padStart(2,"0")}`;
 }
 
@@ -188,7 +187,7 @@ function getColor(t) {
   if (t === 0) return "#8B0000";
   if (t <= 30) return "#d97706";
   if (t <= 60) return "#1e3a8a";
-  return "#555";
+  return "#333";
 }
 
 function getNotice(t) {
@@ -199,9 +198,10 @@ function getNotice(t) {
 }
 
 function update() {
-  const circle = document.getElementById("prog");
-  const percent = 1 - (t / total);
-  const offset = 754 * (1 - (time / total));
+  const circle = document.getElementById("circle");
+
+  const percent = time / total;
+  const offset = 754 * (1 - percent);
 
   circle.style.strokeDashoffset = offset;
   circle.style.stroke = getColor(time);
@@ -218,6 +218,7 @@ function reset() {
   running = false;
   extended = false;
   clearInterval(interval);
+
   document.getElementById("extendBtn").style.background = "";
   draw();
 }
