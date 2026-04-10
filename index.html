@@ -6,23 +6,8 @@
 <style>
 body {
   margin: 0;
-  font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
-  background: #ffffff;
+  font-family: serif;
   text-align: center;
-}
-
-h1 {
-  margin-top: 20px;
-  font-size: 32px;
-}
-
-.select-btn {
-  width: 320px;
-  height: 110px;
-  font-size: 26px;
-  margin: 20px;
-  border-radius: 20px;
-  touch-action: manipulation;
 }
 
 .timer-container {
@@ -34,11 +19,9 @@ h1 {
 
 .timer {
   position: relative;
-  width: 45vw;
-  max-width: 600px;
-  height: 45vw;
-  max-height: 600px;
-  margin: 20px;
+  width: 40vw;
+  height: 40vw;
+  margin: 10px;
 }
 
 svg {
@@ -50,121 +33,76 @@ svg {
 
 circle {
   fill: none;
-  stroke-width: 25;
+  stroke-width: 20;
 }
 
-.bg {
-  stroke: #eee;
-}
-
-.progress {
-  stroke-linecap: round;
-}
+.bg { stroke: #eee; }
+.progress { stroke-linecap: round; }
 
 .time-text {
   position: absolute;
-  top: 50%;
-  left: 50%;
+  top: 50%; left: 50%;
   transform: translate(-50%, -50%);
-  font-size: 6vw;
+  font-size: 5vw;
   font-weight: bold;
 }
 
-.notice {
-  font-size: 2.5vw;
-  margin-top: 10px;
-  height: 50px;
-}
-
-.controls button {
-  width: 180px;
-  height: 70px;
-  font-size: 22px;
+button {
   margin: 10px;
-  border-radius: 15px;
+  padding: 15px;
+  font-size: 20px;
   touch-action: manipulation;
-}
-
-.sub-controls button {
-  width: 140px;
-  height: 55px;
-  margin: 5px;
-  touch-action: manipulation;
-}
-
-.hidden {
-  display: none;
 }
 </style>
 </head>
 
 <body>
 
-<h1>弓道団体戦専用タイマー</h1>
+<h1>男子団体戦タイマー</h1>
 
-<div id="menu">
-  <button class="select-btn" onclick="startGame(480)">男子団体（8分）</button>
-  <button class="select-btn" onclick="startGame(330)">女子・コメディカル（5分30秒）</button>
-</div>
+<div class="timer-container" id="timers"></div>
 
-<div id="game" class="hidden">
-
-  <div class="timer-container" id="timers"></div>
-
-  <div class="controls">
-    <button onclick="toggle()">スタート / ストップ</button>
-    <button id="extendBtn" onclick="extend()">+1分</button>
-  </div>
-
-  <div class="sub-controls">
-    <button onclick="reset()">リセット</button>
-    <button onclick="back()">戻る</button>
-  </div>
-
-</div>
+<button onclick="toggle()">スタート / ストップ</button>
+<button onclick="extend()">延長 +1分</button>
 
 <script>
-let total, time;
+let total = 480;
+let time = 480;
+let extTime = null;
+
 let running = false;
 let interval;
-let extended = false;
 
 let endTime;
+let extEndTime;
 
-function startGame(sec) {
-  total = sec;
-  time = sec;
-  running = false;
-  extended = false;
-
-  document.getElementById("menu").classList.add("hidden");
-  document.getElementById("game").classList.remove("hidden");
-
-  drawTimers();
+function draw() {
+  let html = createTimer("Main");
+  if (extTime !== null) html += createTimer("Ext");
+  document.getElementById("timers").innerHTML = html;
 }
 
-function createTimer() {
+function createTimer(id) {
   return `
   <div class="timer">
     <svg viewBox="0 0 300 300">
       <circle class="bg" cx="150" cy="150" r="120"></circle>
-      <circle id="prog" class="progress" cx="150" cy="150" r="120"
+      <circle id="prog${id}" class="progress" cx="150" cy="150" r="120"
         stroke-dasharray="754" stroke-dashoffset="754"></circle>
     </svg>
-    <div id="time" class="time-text"></div>
-    <div id="note" class="notice"></div>
+    <div id="time${id}" class="time-text"></div>
   </div>`;
-}
-
-function drawTimers() {
-  document.getElementById("timers").innerHTML = createTimer();
-  update();
 }
 
 function toggle() {
   if (!running) {
     running = true;
     endTime = Date.now() + time * 1000;
+
+    if (extTime !== null) {
+      extEndTime = Date.now() + extTime * 1000;
+    }
+
     interval = setInterval(tick, 50);
   } else {
     running = false;
@@ -174,85 +112,54 @@ function toggle() {
 
 function tick() {
   const now = Date.now();
-  const remain = endTime - now;
 
-  time = Math.max(0, Math.floor(remain / 1000));
+  const remainMain = endTime - now;
+  time = Math.max(0, Math.floor(remainMain / 1000));
+
+  if (extTime !== null) {
+    const remainExt = extEndTime - now;
+    extTime = Math.max(0, Math.floor(remainExt / 1000));
+  }
 
   update();
 
-  if (remain <= 0) {
+  if (remainMain <= 0 && (!extTime || extTime === 0)) {
     clearInterval(interval);
     running = false;
   }
 }
 
 function extend() {
-  if (!running || extended) return;
+  if (!running || extTime !== null) return;
 
-  extended = true;
-
-  // 残り時間に＋60秒（←ここが重要）
+  // 残りに＋60秒
   endTime += 60000;
-  total += 60;
 
-  document.getElementById("extendBtn").style.background = "#ccc";
-}
+  // 表示用に延長タイマー作る
+  extTime = 60;
+  extEndTime = Date.now() + 60000;
 
-function format(t) {
-  let m = Math.floor(t / 60);
-  let s = t % 60;
-  return `${m}:${s.toString().padStart(2,"0")}`;
-}
-
-function getColor(t) {
-  if (t === 0) return "#8B0000";
-  if (t <= 30) return "#d97706";
-  if (t <= 60) return "#1e3a8a";
-  return "#555";
-}
-
-function getNotice(t) {
-  if (t <= 60 && t > 30) return "残り1分";
-  if (t <= 30 && t > 0) return "残り30秒　同時打ち起こし開始";
-  if (t === 0) return "終了";
-  return "";
-}
-
-function updateCircle(t, totalT) {
-  const circle = document.getElementById("prog");
-  const percent = 1 - (t / totalT);
-  const offset = 754 * (1 - percent);
-  circle.style.strokeDashoffset = offset;
-
-  const color = getColor(t);
-  circle.style.stroke = color;
-
-  document.getElementById("time").innerText = format(t);
-  document.getElementById("time").style.color = color;
-
-  const note = getNotice(t);
-  document.getElementById("note").innerText = note;
-  document.getElementById("note").style.color = color;
+  draw();
 }
 
 function update() {
-  updateCircle(time, total);
+  updateCircle("Main", time, total);
+
+  if (extTime !== null) {
+    updateCircle("Ext", extTime, 60);
+  }
 }
 
-function reset() {
-  time = total;
-  running = false;
-  extended = false;
-  clearInterval(interval);
-  document.getElementById("extendBtn").style.background = "";
-  drawTimers();
+function updateCircle(id, t, totalT) {
+  const circle = document.getElementById("prog"+id);
+  const offset = 754 * (t / totalT);
+  circle.style.strokeDashoffset = offset;
+
+  document.getElementById("time"+id).innerText =
+    Math.floor(t/60)+":"+String(t%60).padStart(2,"0");
 }
 
-function back() {
-  reset();
-  document.getElementById("game").classList.add("hidden");
-  document.getElementById("menu").classList.remove("hidden");
-}
+draw();
 </script>
 
 </body>
