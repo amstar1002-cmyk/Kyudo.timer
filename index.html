@@ -1,3 +1,255 @@
+  <!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>弓道団体戦専用タイマー</title>
+
+<style>
+body {
+  margin: 0;
+  background: #fff;
+  font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
+  text-align: center;
+}
+
+h1 {
+  margin: 20px;
+}
+
+/* 選択画面 */
+.select-btn {
+  width: 320px;
+  height: 110px;
+  font-size: 24px;
+  margin: 20px;
+  border-radius: 20px;
+}
+
+/* タイマー */
+.timer-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 60vh;
+}
+
+.timer {
+  position: relative;
+  width: 320px;
+  height: 320px;
+  margin: 20px;
+}
+
+svg {
+  transform: rotate(-90deg);
+}
+
+circle {
+  fill: none;
+  stroke-width: 22;
+}
+
+.bg {
+  stroke: #eee;
+}
+
+.progress {
+  stroke-linecap: round;
+}
+
+/* 時間 */
+.time-text {
+  position: absolute;
+  top: 45%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 52px;
+  font-weight: bold;
+}
+
+/* 通知 */
+.notice {
+  position: absolute;
+  bottom: -60px;
+  width: 100%;
+  font-size: 26px;
+  font-weight: bold;
+}
+
+/* ボタン */
+.controls button {
+  width: 160px;
+  height: 70px;
+  font-size: 22px;
+  margin: 10px;
+  border-radius: 15px;
+}
+
+.sub-controls button {
+  width: 130px;
+  height: 55px;
+  margin: 5px;
+}
+
+.hidden {
+  display: none;
+}
+</style>
+</head>
+
+<body>
+
+<h1>弓道団体戦専用タイマー</h1>
+
+<div id="menu">
+  <button class="select-btn" onclick="startGame(480)">男子団体（8分）</button>
+  <button class="select-btn" onclick="startGame(330)">女子・コメディカル（5分30秒）</button>
+</div>
+
+<div id="game" class="hidden">
+
+  <div id="timers" class="timer-container"></div>
+
+  <div class="controls">
+    <button onclick="toggle()">スタート / ストップ</button>
+    <button id="extendBtn" onclick="extend()">+1分</button>
+  </div>
+
+  <div class="sub-controls">
+    <button onclick="reset()">リセット</button>
+    <button onclick="back()">戻る</button>
+  </div>
+
+</div>
+
+<script>
+let total, time;
+let extTime, extTotal;
+let running = false;
+let interval;
+let extended = false;
+
+function startGame(sec) {
+  total = sec;
+  time = sec;
+  extTime = null;
+  extTotal = null;
+  running = false;
+  extended = false;
+
+  document.getElementById("menu").classList.add("hidden");
+  document.getElementById("game").classList.remove("hidden");
+
+  draw();
+}
+
+function createTimer(id) {
+  return `
+  <div class="timer">
+    <svg width="320" height="320">
+      <circle class="bg" cx="160" cy="160" r="130"></circle>
+      <circle id="prog${id}" class="progress"
+        cx="160" cy="160" r="130"
+        stroke-dasharray="817"
+        stroke-dashoffset="817"></circle>
+    </svg>
+    <div id="time${id}" class="time-text"></div>
+    <div id="note${id}" class="notice"></div>
+  </div>`;
+}
+
+function draw() {
+  let html = createTimer("Main");
+  if (extended) html += createTimer("Ext");
+  document.getElementById("timers").innerHTML = html;
+  update();
+}
+
+function toggle() {
+  if (!running) {
+    running = true;
+    interval = setInterval(tick, 1000);
+  } else {
+    running = false;
+    clearInterval(interval);
+  }
+}
+
+function tick() {
+  if (time > 0) time--;
+  if (extended && extTime > 0) extTime--;
+
+  update();
+
+  if (time === 0 && (!extended || extTime === 0)) {
+    clearInterval(interval);
+    running = false;
+  }
+}
+
+function extend() {
+  if (!running || extended) return;
+
+  extended = true;
+  extTime = time + 60;
+
+  // 基準時間（ここが今回の重要ポイント）
+  if (total === 480) {
+    extTotal = 540; // 男子9分
+  } else {
+    extTotal = 390; // 女子6分30秒
+  }
+
+  document.getElementById("extendBtn").style.background = "#ccc";
+
+  draw();
+}
+
+function format(t) {
+  let m = Math.floor(t / 60);
+  let s = t % 60;
+  return `${m}:${s.toString().padStart(2,"0")}`;
+}
+
+function getColor(t) {
+  if (t === 0) return "#8B0000";
+  if (t <= 30) return "#d97706";
+  if (t <= 60) return "#1e3a8a";
+  return "#555";
+}
+
+function getNotice(t) {
+  if (t <= 60 && t > 30) return "残り1分";
+  if (t <= 30 && t > 0) return "残り30秒 同時打ち起こし開始";
+  if (t === 0) return "終了";
+  return "";
+}
+
+function updateCircle(id, t, totalT) {
+  const circle = document.getElementById("prog"+id);
+  const percent = 1 - (t / totalT);
+  const offset = 817 * (1 - percent);
+
+  circle.style.strokeDashoffset = offset;
+
+  const color = getColor(t);
+  circle.style.stroke = color;
+
+  document.getElementById("time"+id).innerText = format(t);
+  document.getElementById("time"+id).style.color = color;
+
+  document.getElementById("note"+id).innerText = getNotice(t);
+  document.getElementById("note"+id).style.color = color;
+}
+
+function update() {
+  updateCircle("Main", time, total);
+  if (extended) updateCircle("Ext", extTime, extTotal);
+}
+
+function reset() {
+  time = total;
+  extTime = null;
   extTotal = null;
   extended = false;
   running = false;
